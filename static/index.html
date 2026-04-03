@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Star Wars RPG Chatbot</title>
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #0a0a0f;
+            color: #e8e8e8;
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        header {
+            width: 100%;
+            max-width: 800px;
+            padding: 1.25rem 1rem 0.75rem;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            color: #ffe81f;
+            text-transform: uppercase;
+        }
+
+        header p {
+            font-size: 0.8rem;
+            color: #777;
+            margin-top: 0.25rem;
+        }
+
+        #chat {
+            flex: 1;
+            width: 100%;
+            max-width: 800px;
+            overflow-y: auto;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .bubble-row {
+            display: flex;
+            gap: 0.6rem;
+            align-items: flex-start;
+        }
+
+        .bubble-row.user {
+            flex-direction: row-reverse;
+        }
+
+        .avatar {
+            width: 2rem;
+            height: 2rem;
+            border-radius: 50%;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+        }
+
+        .bubble-row.bot .avatar {
+            background: #1a1a2e;
+            border: 1px solid #ffe81f44;
+        }
+
+        .bubble-row.user .avatar {
+            background: #1a2e1a;
+            border: 1px solid #4caf5044;
+        }
+
+        .bubble {
+            max-width: 75%;
+            padding: 0.7rem 1rem;
+            border-radius: 1rem;
+            font-size: 0.92rem;
+            line-height: 1.55;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .bubble-row.bot .bubble {
+            background: #13131f;
+            border: 1px solid #2a2a3e;
+            border-top-left-radius: 0;
+        }
+
+        .bubble-row.user .bubble {
+            background: #1a2a1a;
+            border: 1px solid #2a3e2a;
+            border-top-right-radius: 0;
+        }
+
+        .bubble.thinking {
+            color: #666;
+            font-style: italic;
+        }
+
+        #form {
+            width: 100%;
+            max-width: 800px;
+            padding: 0.75rem 1rem 1.25rem;
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        #input {
+            flex: 1;
+            background: #13131f;
+            border: 1px solid #2a2a3e;
+            border-radius: 0.6rem;
+            color: #e8e8e8;
+            font-size: 0.95rem;
+            padding: 0.65rem 0.9rem;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+
+        #input:focus {
+            border-color: #ffe81f88;
+        }
+
+        #input::placeholder {
+            color: #555;
+        }
+
+        #send {
+            background: #ffe81f;
+            color: #0a0a0f;
+            border: none;
+            border-radius: 0.6rem;
+            font-size: 0.9rem;
+            font-weight: 700;
+            padding: 0 1.2rem;
+            cursor: pointer;
+            transition: opacity 0.15s;
+            white-space: nowrap;
+        }
+
+        #send:disabled {
+            opacity: 0.4;
+            cursor: default;
+        }
+
+        #send:not(:disabled):hover {
+            opacity: 0.85;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>&#9733; Star Wars RPG Chatbot</h1>
+        <p>Ask anything about your rulebooks</p>
+    </header>
+
+    <div id="chat"></div>
+
+    <form id="form">
+        <input id="input" type="text" placeholder="Ask a question about rules or lore…" autocomplete="off" />
+        <button id="send" type="submit">Send</button>
+    </form>
+
+    <script>
+        const chat = document.getElementById('chat');
+        const form = document.getElementById('form');
+        const input = document.getElementById('input');
+        const send = document.getElementById('send');
+
+        function addBubble(role, text, isThinking = false) {
+            const row = document.createElement('div');
+            row.className = `bubble-row ${role}`;
+
+            const avatar = document.createElement('div');
+            avatar.className = 'avatar';
+            avatar.textContent = role === 'user' ? '🧑' : '🤖';
+
+            const bubble = document.createElement('div');
+            bubble.className = 'bubble' + (isThinking ? ' thinking' : '');
+            bubble.textContent = text;
+
+            row.appendChild(avatar);
+            row.appendChild(bubble);
+            chat.appendChild(row);
+            chat.scrollTop = chat.scrollHeight;
+            return bubble;
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const question = input.value.trim();
+            if (!question) return;
+
+            input.value = '';
+            send.disabled = true;
+            input.disabled = true;
+
+            addBubble('user', question);
+            const thinking = addBubble('bot', 'Searching the archives…', true);
+
+            try {
+                const res = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question }),
+                });
+
+                if (!res.ok) throw new Error(`Server error: ${res.status}`);
+                const data = await res.json();
+
+                thinking.classList.remove('thinking');
+                thinking.textContent = data.answer;
+            } catch (err) {
+                thinking.classList.remove('thinking');
+                thinking.style.color = '#f66';
+                thinking.textContent = 'Error: ' + err.message;
+            } finally {
+                send.disabled = false;
+                input.disabled = false;
+                input.focus();
+            }
+        });
+
+        input.focus();
+    </script>
+</body>
+
+</html>
