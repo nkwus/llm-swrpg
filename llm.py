@@ -1,4 +1,4 @@
-import requests
+from groq import Groq
 
 from config import Settings
 
@@ -15,18 +15,13 @@ def build_prompt(context_chunks: list[str], question: str) -> str:
     )
 
 
-def call_ollama(prompt: str, settings: Settings) -> str:
-    url = f"{settings.ollama_url}/api/generate"
-    payload = {
-        "model": settings.ollama_model,
-        "prompt": prompt,
-        "stream": False,
-    }
+def call_groq(prompt: str, settings: Settings) -> str:
+    client = Groq(api_key=settings.groq_api_key)
     try:
-        response = requests.post(url, json=payload, timeout=120)
-        response.raise_for_status()
-    except requests.exceptions.RequestException as e:
-        return f"Error: could not reach the local LLM ({e}). Is Ollama running?"
-
-    data: dict[str, str] = response.json()
-    return data.get("response", "").strip()
+        completion = client.chat.completions.create(
+            model=settings.groq_model,
+            messages=[{"role": "user", "content": prompt}],
+        )
+    except Exception as e:
+        return f"Error: could not reach Groq API ({e})."
+    return (completion.choices[0].message.content or "").strip()

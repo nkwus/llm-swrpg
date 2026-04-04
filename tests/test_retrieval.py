@@ -9,8 +9,8 @@ SETTINGS = Settings(
     chroma_dir="chroma",
     collection_name="star_wars_rpg",
     embedding_model="all-MiniLM-L6-v2",
-    ollama_url="http://localhost:11434",
-    ollama_model="mistral",
+    groq_api_key="test-api-key",
+    groq_model="llama-3.3-70b-versatile",
     retrieval_k=15,
 )
 

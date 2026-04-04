@@ -1,17 +1,16 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-import requests
 
 from config import Settings
-from llm import build_prompt, call_ollama
+from llm import build_prompt, call_groq
 
 SETTINGS = Settings(
     chroma_dir="chroma",
     collection_name="star_wars_rpg",
     embedding_model="all-MiniLM-L6-v2",
-    ollama_url="http://localhost:11434",
-    ollama_model="mistral",
+    groq_api_key="test-api-key",
+    groq_model="llama-3.3-70b-versatile",
     retrieval_k=15,
 )
 
@@ -46,84 +45,74 @@ def test_build_prompt_contains_system_instruction() -> None:
 
 
 # ---------------------------------------------------------------------------
-# call_ollama — successful response
+# call_groq — successful response
 # ---------------------------------------------------------------------------
 
 
-def test_call_ollama_returns_response_text() -> None:
-    mock_response = MagicMock()
-    mock_response.json.return_value = {"response": "The Force is strong."}
-    mock_response.raise_for_status.return_value = None
+def test_call_groq_returns_response_text() -> None:
+    mock_client = MagicMock()
+    mock_client.chat.completions.create.return_value.choices[0].message.content = "The Force is strong."
 
-    with patch("llm.requests.post", return_value=mock_response) as mock_post:
-        result = call_ollama("some prompt", SETTINGS)
+    with patch("llm.Groq", return_value=mock_client) as mock_groq_class:
+        result = call_groq("some prompt", SETTINGS)
 
     assert result == "The Force is strong."
-    mock_post.assert_called_once()
+    mock_groq_class.assert_called_once_with(api_key="test-api-key")
 
 
-def test_call_ollama_posts_to_correct_url() -> None:
-    mock_response = MagicMock()
-    mock_response.json.return_value = {"response": "ok"}
-    mock_response.raise_for_status.return_value = None
+def test_call_groq_sends_correct_model() -> None:
+    mock_client = MagicMock()
+    mock_client.chat.completions.create.return_value.choices[0].message.content = "ok"
 
-    with patch("llm.requests.post", return_value=mock_response) as mock_post:
-        call_ollama("prompt", SETTINGS)
+    with patch("llm.Groq", return_value=mock_client):
+        call_groq("prompt", SETTINGS)
 
-    call_args = mock_post.call_args
-    assert call_args[0][0] == "http://localhost:11434/api/generate"
-
-
-def test_call_ollama_sends_correct_model() -> None:
-    mock_response = MagicMock()
-    mock_response.json.return_value = {"response": "ok"}
-    mock_response.raise_for_status.return_value = None
-
-    with patch("llm.requests.post", return_value=mock_response) as mock_post:
-        call_ollama("prompt", SETTINGS)
-
-    payload = mock_post.call_args[1]["json"]
-    assert payload["model"] == "mistral"
-    assert payload["stream"] is False
+    call_kwargs = mock_client.chat.completions.create.call_args[1]
+    assert call_kwargs["model"] == "llama-3.3-70b-versatile"
+    assert call_kwargs["messages"] == [{"role": "user", "content": "prompt"}]
 
 
-def test_call_ollama_strips_whitespace_from_response() -> None:
-    mock_response = MagicMock()
-    mock_response.json.return_value = {"response": "  answer with spaces  "}
-    mock_response.raise_for_status.return_value = None
+def test_call_groq_strips_whitespace_from_response() -> None:
+    mock_client = MagicMock()
+    mock_client.chat.completions.create.return_value.choices[0].message.content = "  answer with spaces  "
 
-    with patch("llm.requests.post", return_value=mock_response):
-        result = call_ollama("prompt", SETTINGS)
+    with patch("llm.Groq", return_value=mock_client):
+        result = call_groq("prompt", SETTINGS)
 
     assert result == "answer with spaces"
 
 
-# ---------------------------------------------------------------------------
-# call_ollama — error handling
-# ---------------------------------------------------------------------------
+def test_call_groq_returns_empty_string_when_content_is_none() -> None:
+    mock_client = MagicMock()
+    mock_client.chat.completions.create.return_value.choices[0].message.content = None
 
-
-def test_call_ollama_returns_error_message_on_connection_failure() -> None:
-    with patch("llm.requests.post", side_effect=requests.exceptions.ConnectionError("refused")):
-        result = call_ollama("prompt", SETTINGS)
-
-    assert "Error" in result
-    assert "Ollama running" in result
-
-
-def test_call_ollama_returns_error_message_on_timeout() -> None:
-    with patch("llm.requests.post", side_effect=requests.exceptions.Timeout()):
-        result = call_ollama("prompt", SETTINGS)
-
-    assert "Error" in result
-
-
-def test_call_ollama_handles_missing_response_key() -> None:
-    mock_response = MagicMock()
-    mock_response.json.return_value = {}
-    mock_response.raise_for_status.return_value = None
-
-    with patch("llm.requests.post", return_value=mock_response):
-        result = call_ollama("prompt", SETTINGS)
+    with patch("llm.Groq", return_value=mock_client):
+        result = call_groq("prompt", SETTINGS)
 
     assert result == ""
+
+
+# ---------------------------------------------------------------------------
+# call_groq — error handling
+# ---------------------------------------------------------------------------
+
+
+def test_call_groq_returns_error_message_on_connection_failure() -> None:
+    mock_client = MagicMock()
+    mock_client.chat.completions.create.side_effect = Exception("connection refused")
+
+    with patch("llm.Groq", return_value=mock_client):
+        result = call_groq("prompt", SETTINGS)
+
+    assert "Error" in result
+    assert "Groq" in result
+
+
+def test_call_groq_returns_error_message_on_api_error() -> None:
+    mock_client = MagicMock()
+    mock_client.chat.completions.create.side_effect = Exception("rate limited")
+
+    with patch("llm.Groq", return_value=mock_client):
+        result = call_groq("prompt", SETTINGS)
+
+    assert "Error" in result

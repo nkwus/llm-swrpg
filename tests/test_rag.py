@@ -7,8 +7,8 @@ SETTINGS = Settings(
     chroma_dir="chroma",
     collection_name="star_wars_rpg",
     embedding_model="all-MiniLM-L6-v2",
-    ollama_url="http://localhost:11434",
-    ollama_model="mistral",
+    groq_api_key="test-api-key",
+    groq_model="llama-3.3-70b-versatile",
     retrieval_k=15,
 )
 
@@ -34,7 +34,7 @@ def test_answer_question_returns_llm_response() -> None:
     embedder = _make_embedder()
     collection = _make_collection(["Relevant rulebook text about initiative."])
 
-    with patch("rag.call_ollama", return_value="Initiative is determined by Agility."):
+    with patch("rag.call_groq", return_value="Initiative is determined by Agility."):
         result = answer_question("How does initiative work?", embedder, collection, SETTINGS)
 
     assert result == "Initiative is determined by Agility."
@@ -44,7 +44,7 @@ def test_answer_question_passes_question_to_retrieval() -> None:
     embedder = _make_embedder()
     collection = _make_collection(["some context"])
 
-    with patch("rag.call_ollama", return_value="answer"), \
+    with patch("rag.call_groq", return_value="answer"), \
          patch("rag.retrieve_relevant_chunks", return_value=["some context"]) as mock_retrieve:
         answer_question("What is a lightsaber?", embedder, collection, SETTINGS)
 
@@ -59,12 +59,12 @@ def test_answer_question_uses_retrieval_k_from_settings() -> None:
         chroma_dir="chroma",
         collection_name="star_wars_rpg",
         embedding_model="all-MiniLM-L6-v2",
-        ollama_url="http://localhost:11434",
-        ollama_model="mistral",
+        groq_api_key="test-api-key",
+        groq_model="llama-3.3-70b-versatile",
         retrieval_k=20,
     )
 
-    with patch("rag.call_ollama", return_value="answer"), \
+    with patch("rag.call_groq", return_value="answer"), \
          patch("rag.retrieve_relevant_chunks", return_value=["ctx"]) as mock_retrieve:
         answer_question("q", embedder, collection, settings)
 
@@ -80,19 +80,19 @@ def test_answer_question_returns_fallback_when_no_chunks() -> None:
     embedder = _make_embedder()
     collection = _make_collection([])
 
-    with patch("rag.call_ollama") as mock_llm:
+    with patch("rag.call_groq") as mock_llm:
         result = answer_question("What is a krayt dragon?", embedder, collection, SETTINGS)
 
     assert "couldn't find" in result.lower()
     mock_llm.assert_not_called()
 
 
-def test_answer_question_does_not_call_ollama_when_no_chunks() -> None:
+def test_answer_question_does_not_call_groq_when_no_chunks() -> None:
     embedder = _make_embedder()
     collection = MagicMock()
     collection.query.return_value = {"documents": [[]]}
 
-    with patch("rag.call_ollama") as mock_llm:
+    with patch("rag.call_groq") as mock_llm:
         answer_question("q", embedder, collection, SETTINGS)
 
     mock_llm.assert_not_called()

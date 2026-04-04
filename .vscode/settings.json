@@ -1,4 +1,5 @@
 {
+    "python.terminal.useEnvFile": true,
     "python.defaultInterpreterPath": "/home/neil/code/llm-swrpg/.venv/bin/python3",
     "python.analysis.extraPaths": [
         "."
