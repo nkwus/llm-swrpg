@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin – Star Wars RPG Chatbot</title>
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #0a0a0f;
+            color: #e8e8e8;
+            min-height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 1.5rem 1rem;
+        }
+
+        h1 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            color: #ffe81f;
+            text-transform: uppercase;
+            margin-bottom: 0.4rem;
+        }
+
+        .subtitle {
+            font-size: 0.8rem;
+            color: #777;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            width: 100%;
+            max-width: 700px;
+            background: #13131f;
+            border: 1px solid #2a2a3e;
+            border-radius: 0.8rem;
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .card h2 {
+            font-size: 1rem;
+            color: #ffe81f;
+            margin-bottom: 0.75rem;
+        }
+
+        /* Drop zone */
+        #dropzone {
+            border: 2px dashed #2a2a3e;
+            border-radius: 0.6rem;
+            padding: 2rem;
+            text-align: center;
+            color: #555;
+            cursor: pointer;
+            transition: border-color 0.2s, color 0.2s;
+            margin-bottom: 0.75rem;
+        }
+
+        #dropzone.over {
+            border-color: #ffe81f88;
+            color: #ffe81f;
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        /* PDF list */
+        #pdf-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        #pdf-list li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #0a0a0f;
+            padding: 0.45rem 0.75rem;
+            border-radius: 0.4rem;
+            font-size: 0.85rem;
+        }
+
+        #pdf-list .size {
+            color: #777;
+            font-size: 0.8rem;
+        }
+
+        #pdf-list button {
+            background: none;
+            border: none;
+            color: #f66;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-block;
+            background: #ffe81f;
+            color: #0a0a0f;
+            border: none;
+            border-radius: 0.6rem;
+            font-size: 0.9rem;
+            font-weight: 700;
+            padding: 0.7rem 1.5rem;
+            cursor: pointer;
+            transition: opacity 0.15s;
+        }
+
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: default;
+        }
+
+        .btn:not(:disabled):hover {
+            opacity: 0.85;
+        }
+
+        .btn-secondary {
+            background: #1a2e1a;
+            color: #4caf50;
+            border: 1px solid #2a3e2a;
+        }
+
+        /* Status */
+        #status-bar {
+            width: 100%;
+            max-width: 700px;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #666;
+            flex-shrink: 0;
+        }
+
+        .status-dot.ready {
+            background: #4caf50;
+        }
+
+        #status-text {
+            font-size: 0.85rem;
+            color: #999;
+        }
+
+        /* Log */
+        #log {
+            width: 100%;
+            max-width: 700px;
+            background: #0a0a0f;
+            border: 1px solid #2a2a3e;
+            border-radius: 0.6rem;
+            padding: 0.75rem 1rem;
+            font-family: 'Cascadia Code', 'Fira Code', monospace;
+            font-size: 0.8rem;
+            color: #888;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+
+        a {
+            color: #ffe81f;
+        }
+
+        /* Progress bar */
+        .progress-container {
+            width: 100%;
+            background: #0a0a0f;
+            border: 1px solid #2a2a3e;
+            border-radius: 0.4rem;
+            overflow: hidden;
+            height: 1.4rem;
+            margin-top: 0.75rem;
+            display: none;
+        }
+
+        .progress-container.visible {
+            display: block;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: #ffe81f;
+            width: 0%;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #0a0a0f;
+            min-width: fit-content;
+            padding: 0 0.5rem;
+        }
+
+        #progress-label {
+            font-size: 0.8rem;
+            color: #999;
+            margin-top: 0.4rem;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>&#9881; Admin Panel</h1>
+    <p class="subtitle">Upload PDFs, ingest into the vector database, then start the chat service</p>
+
+    <div id="status-bar">
+        <div id="status-dot" class="status-dot"></div>
+        <span id="status-text">Checking…</span>
+        <a href="/" style="margin-left:auto; font-size:0.85rem;">Go to Chat →</a>
+    </div>
+
+    <!-- Step 1: Upload -->
+    <div class="card">
+        <h2>1. Upload PDFs</h2>
+        <div id="dropzone" tabindex="0">
+            Drop PDF files here or click to browse
+        </div>
+        <input id="file-input" type="file" accept=".pdf" multiple />
+        <ul id="pdf-list"></ul>
+    </div>
+
+    <!-- Step 2: Process -->
+    <div class="card">
+        <h2>2. Process PDFs → Vector Database</h2>
+        <p style="font-size:0.85rem; color:#999; margin-bottom:0.75rem;">
+            Extracts text, creates embeddings, and stores them in ChromaDB. This can take a few minutes for large files.
+        </p>
+        <button class="btn" id="btn-process">Process PDFs</button>
+        <div class="progress-container" id="progress-container">
+            <div class="progress-bar" id="progress-bar"></div>
+        </div>
+        <div id="progress-label"></div>
+    </div>
+
+    <!-- Step 3: Start Chat -->
+    <div class="card">
+        <h2>3. Start Chat Service</h2>
+        <p style="font-size:0.85rem; color:#999; margin-bottom:0.75rem;">
+            Loads the embedding model and vector database so the chat interface can answer questions.
+        </p>
+        <button class="btn btn-secondary" id="btn-start">Start Chat Service</button>
+    </div>
+
+    <div id="log">Ready.\n</div>
+
+    <script>
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('file-input');
+        const pdfList = document.getElementById('pdf-list');
+        const btnProcess = document.getElementById('btn-process');
+        const btnStart = document.getElementById('btn-start');
+        const log = document.getElementById('log');
+        const statusDot = document.getElementById('status-dot');
+        const statusText = document.getElementById('status-text');
+
+        function logMsg(msg) {
+            log.textContent += msg + '\n';
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function fmtSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / 1048576).toFixed(1) + ' MB';
+        }
+
+        // --- Status ---
+        async function refreshStatus() {
+            try {
+                const res = await fetch('/api/status');
+                const data = await res.json();
+                if (data.chat_ready) {
+                    statusDot.className = 'status-dot ready';
+                    statusText.textContent = 'Chat service is running';
+                } else {
+                    statusDot.className = 'status-dot';
+                    statusText.textContent = 'Chat service not started';
+                }
+            } catch {
+                statusDot.className = 'status-dot';
+                statusText.textContent = 'Cannot reach server';
+            }
+        }
+
+        // --- PDF list ---
+        async function refreshPdfs() {
+            try {
+                const res = await fetch('/api/pdfs');
+                const pdfs = await res.json();
+                pdfList.innerHTML = '';
+                for (const pdf of pdfs) {
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        <span>📄 ${pdf.name} <span class="size">(${fmtSize(pdf.size)})</span></span>
+                        <button onclick="deletePdf('${pdf.name}')">✕</button>
+                    `;
+                    pdfList.appendChild(li);
+                }
+            } catch { /* ignore */ }
+        }
+
+        async function deletePdf(name) {
+            await fetch('/api/delete-pdf', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name }),
+            });
+            logMsg(`Deleted: ${name}`);
+            refreshPdfs();
+        }
+
+        // --- Upload ---
+        dropzone.addEventListener('click', () => fileInput.click());
+        dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('over'); });
+        dropzone.addEventListener('dragleave', () => dropzone.classList.remove('over'));
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('over');
+            uploadFiles(e.dataTransfer.files);
+        });
+        fileInput.addEventListener('change', () => {
+            uploadFiles(fileInput.files);
+            fileInput.value = '';
+        });
+
+        async function uploadFiles(files) {
+            for (const file of files) {
+                logMsg(`Uploading: ${file.name} (${fmtSize(file.size)})…`);
+                const form = new FormData();
+                form.append('file', file);
+                try {
+                    const res = await fetch('/api/upload', { method: 'POST', body: form });
+                    const data = await res.json();
+                    if (data.error) {
+                        logMsg(`  ✗ ${data.error}`);
+                    } else {
+                        logMsg(`  ✓ Uploaded ${data.filename}`);
+                    }
+                } catch (err) {
+                    logMsg(`  ✗ Upload failed: ${err.message}`);
+                }
+            }
+            refreshPdfs();
+        }
+
+        // --- Process ---
+        const progressContainer = document.getElementById('progress-container');
+        const progressBar = document.getElementById('progress-bar');
+        const progressLabel = document.getElementById('progress-label');
+        let pollTimer = null;
+
+        function showProgress(pct, label) {
+            progressContainer.classList.add('visible');
+            progressBar.style.width = Math.max(pct, 2) + '%';
+            progressBar.textContent = pct > 5 ? Math.round(pct) + '%' : '';
+            progressLabel.textContent = label;
+        }
+
+        function hideProgress() {
+            progressContainer.classList.remove('visible');
+            progressLabel.textContent = '';
+        }
+
+        async function pollProgress() {
+            try {
+                const res = await fetch('/api/process/progress');
+                const p = await res.json();
+
+                if (p.error) {
+                    logMsg(`✗ Error: ${p.error}`);
+                    stopPolling();
+                    btnProcess.disabled = false;
+                    btnProcess.textContent = 'Process PDFs';
+                    hideProgress();
+                    return;
+                }
+
+                if (p.phase === 'done') {
+                    showProgress(100, 'Complete!');
+                    logMsg(`✓ Done — ${p.chunks_done} chunks embedded from ${p.files_total} files`);
+                    stopPolling();
+                    btnProcess.disabled = false;
+                    btnProcess.textContent = 'Process PDFs';
+                    return;
+                }
+
+                if (p.chunks_total > 0) {
+                    const pct = (p.chunks_done / p.chunks_total) * 100;
+                    showProgress(pct, `${p.phase}  •  ${p.current_file}  •  ${p.chunks_done} / ${p.chunks_total} chunks`);
+                } else {
+                    showProgress(0, `${p.phase}  •  ${p.current_file || 'Initialising…'}`);
+                }
+            } catch { /* server unreachable, keep trying */ }
+        }
+
+        function startPolling() {
+            pollTimer = setInterval(pollProgress, 500);
+        }
+
+        function stopPolling() {
+            if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+        }
+
+        btnProcess.addEventListener('click', async () => {
+            btnProcess.disabled = true;
+            btnProcess.textContent = 'Processing…';
+            showProgress(0, 'Starting…');
+            logMsg('Processing PDFs…');
+            try {
+                const res = await fetch('/api/process', { method: 'POST' });
+                const data = await res.json();
+                if (data.error) {
+                    logMsg(`✗ ${data.error}`);
+                    btnProcess.disabled = false;
+                    btnProcess.textContent = 'Process PDFs';
+                    hideProgress();
+                } else {
+                    logMsg(`Started processing ${data.files} files…`);
+                    startPolling();
+                }
+            } catch (err) {
+                logMsg(`✗ Processing failed: ${err.message}`);
+                btnProcess.disabled = false;
+                btnProcess.textContent = 'Process PDFs';
+                hideProgress();
+            }
+        });
+
+        // --- Start Chat ---
+        btnStart.addEventListener('click', async () => {
+            btnStart.disabled = true;
+            btnStart.textContent = 'Starting…';
+            logMsg('Starting chat service…');
+            try {
+                const res = await fetch('/api/start-chat', { method: 'POST' });
+                const data = await res.json();
+                if (data.error) {
+                    logMsg(`✗ ${data.error}`);
+                } else {
+                    logMsg(`✓ ${data.status}`);
+                }
+            } catch (err) {
+                logMsg(`✗ Failed: ${err.message}`);
+            } finally {
+                btnStart.disabled = false;
+                btnStart.textContent = 'Start Chat Service';
+                refreshStatus();
+            }
+        });
+
+        // Init
+        refreshStatus();
+        refreshPdfs();
+    </script>
+</body>
+
+</html>

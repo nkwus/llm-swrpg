@@ -1,0 +1,14 @@
+{
+    "python.terminal.useEnvFile": true,
+    "python.defaultInterpreterPath": "/home/neil/code/llm-swrpg/.venv/bin/python3",
+    "python.analysis.extraPaths": [
+        "."
+    ],
+    "python-envs.pythonProjects": [
+        {
+            "path": ".",
+            "envManager": "ms-python.python:venv",
+            "packageManager": "ms-python.python:pip"
+        }
+    ]
+}
