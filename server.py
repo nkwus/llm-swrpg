@@ -1,5 +1,6 @@
+import os
 from contextlib import asynccontextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from threading import Thread
 from typing import AsyncGenerator
@@ -12,7 +13,8 @@ from config import get_settings
 from rag import answer_question
 
 _STATIC = Path(__file__).parent / "static"
-_DATA = Path(__file__).parent / "data"
+# DATA_DIR env var lets you point uploads at a Railway Volume (e.g. /data/uploads).
+_DATA = Path(os.environ.get("DATA_DIR", str(Path(__file__).parent / "data")))
 
 
 @dataclass
@@ -63,9 +65,13 @@ async def upload_pdf(file: UploadFile) -> JSONResponse:
         return JSONResponse({"error": "Only PDF files are accepted."}, status_code=400)
     safe_name = Path(file.filename).name  # strip any path components
     dest = _DATA / safe_name
-    content = await file.read()
-    dest.write_bytes(content)
-    return JSONResponse({"filename": safe_name, "size": len(content)})
+    # Stream to disk in 1 MB chunks to avoid loading the whole PDF into memory.
+    size = 0
+    with dest.open("wb") as f:
+        while chunk := await file.read(1024 * 1024):
+            f.write(chunk)
+            size += len(chunk)
+    return JSONResponse({"filename": safe_name, "size": size})
 
 
 @app.get("/api/pdfs")
@@ -145,7 +151,7 @@ def process_pdfs() -> JSONResponse:
                 for chunk in chunks:
                     embedding = embedder.encode(chunk).tolist()
                     doc_id = f"{pdf_path.name}-{doc_id_counter}"
-                    collection.add(
+                    collection.upsert(
                         documents=[chunk],
                         embeddings=[embedding],
                         ids=[doc_id],
@@ -183,6 +189,11 @@ def start_chat() -> JSONResponse:
     from retrieval import get_chroma_collection, get_embedder
 
     settings = app.state.settings
+    if not settings.groq_api_key:
+        return JSONResponse(
+            {"error": "GROQ_API_KEY is not set. Add it as an environment variable in Railway."},
+            status_code=500,
+        )
     try:
         app.state.embedder = get_embedder(settings)
         app.state.collection = get_chroma_collection(settings)

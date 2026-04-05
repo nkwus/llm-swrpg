@@ -63,7 +63,7 @@ def main() -> None:
         for chunk in chunks:
             embedding = embedder.encode(chunk).tolist()
             doc_id = f"{pdf_path.name}-{doc_id_counter}"
-            collection.add(
+            collection.upsert(
                 documents=[chunk],
                 embeddings=[embedding],
                 ids=[doc_id],
