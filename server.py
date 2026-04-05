@@ -46,7 +46,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     app.state.embedder = None
     app.state.collection = None
     app.state.progress = ProcessProgress()
-    _DATA.mkdir(exist_ok=True)
+    _DATA.mkdir(parents=True, exist_ok=True)
     yield
 
 
