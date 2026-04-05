@@ -88,7 +88,7 @@ def test_status_reports_ready(client: TestClient) -> None:
 
 
 def test_chat_returns_answer(client: TestClient) -> None:
-    with patch("server.answer_question", return_value="Agility governs initiative."):
+    with patch("rag.answer_question", return_value="Agility governs initiative."):
         response = client.post("/api/chat", json={"question": "How does initiative work?"})
 
     assert response.status_code == 200
@@ -96,7 +96,7 @@ def test_chat_returns_answer(client: TestClient) -> None:
 
 
 def test_chat_passes_question_to_answer_question(client: TestClient) -> None:
-    with patch("server.answer_question", return_value="answer") as mock_aq:
+    with patch("rag.answer_question", return_value="answer") as mock_aq:
         client.post("/api/chat", json={"question": "What is a blaster?"})
 
     mock_aq.assert_called_once()
@@ -104,7 +104,7 @@ def test_chat_passes_question_to_answer_question(client: TestClient) -> None:
 
 
 def test_chat_strips_whitespace_from_question(client: TestClient) -> None:
-    with patch("server.answer_question", return_value="answer") as mock_aq:
+    with patch("rag.answer_question", return_value="answer") as mock_aq:
         client.post("/api/chat", json={"question": "  padded question  "})
 
     assert mock_aq.call_args[0][0] == "padded question"
@@ -127,7 +127,7 @@ def test_chat_returns_not_running_when_service_not_started(client_no_chat: TestC
 
 
 def test_chat_empty_question_returns_prompt(client: TestClient) -> None:
-    with patch("server.answer_question") as mock_aq:
+    with patch("rag.answer_question") as mock_aq:
         response = client.post("/api/chat", json={"question": ""})
 
     assert response.status_code == 200
@@ -136,7 +136,7 @@ def test_chat_empty_question_returns_prompt(client: TestClient) -> None:
 
 
 def test_chat_whitespace_only_question_returns_prompt(client: TestClient) -> None:
-    with patch("server.answer_question") as mock_aq:
+    with patch("rag.answer_question") as mock_aq:
         response = client.post("/api/chat", json={"question": "   "})
 
     assert response.status_code == 200

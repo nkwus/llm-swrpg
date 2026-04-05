@@ -10,7 +10,6 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 
 from config import get_settings
-from rag import answer_question
 
 _STATIC = Path(__file__).parent / "static"
 # DATA_DIR env var lets you point uploads at a Railway Volume (e.g. /data/uploads).
@@ -225,6 +224,8 @@ class ChatResponse(BaseModel):
 
 @app.post("/api/chat", response_model=ChatResponse)
 def chat(req: ChatRequest) -> ChatResponse:
+    from rag import answer_question
+
     if app.state.embedder is None or app.state.collection is None:
         return ChatResponse(answer="Chat service is not running. Go to the admin page and start it first.")
 
